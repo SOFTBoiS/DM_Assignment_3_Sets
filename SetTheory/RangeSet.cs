@@ -1,89 +1,197 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace SetTheory
 {
     class RangeSet : ISet<long>
     {
-        private readonly long min;
-        private readonly long max;
-        public long Length => max - min;
+        public readonly long Min;
+        public readonly long Max;
+        public long Length => Max - Min + 1;
 
         public RangeSet(long min, long max)
         {
-            this.min = min;
-            this.max = max;
+            this.Min = min;
+            this.Max = max;
         }
 
         public bool IsMember(long member)
         {
-            return min <= member && member < max;
+            return Min <= member && member <= Max;
         }
 
         public ISet<long> Union(ISet<long> other)
         {
             if (other is RangeSet rs)
             {
-                if (min > rs.max || rs.min > max)
+                if (Min > rs.Max || rs.Min > Max)
                 {
                     return new UnionSet(this, other);
                 }
 
-                var minVal = Math.Min(this.min, rs.min);
-                var maxVal = Math.Max(this.max, rs.max);
+                var minVal = Math.Min(this.Min, rs.Min);
+                var maxVal = Math.Max(this.Max, rs.Max);
                 return new RangeSet(minVal, maxVal);
             }
-            
+
             // TODO: Do the same for HashedSet
             return new UnionSet(this, other);
         }
 
-        public ISet<long> Intersection(ISet<long> set)
+        public ISet<long> Intersection(ISet<long> other)
         {
+            if (other is RangeSet rs)
+            {
+                // TODO: Implement empty set and return that instead
+                if (rs.Min > Max || Min > rs.Max) return new HashedSet(new long[] { });
+
+                var lowerBounds = Math.Max(this.Min, rs.Min);
+                var upperBounds = Math.Min(this.Max, rs.Max);
+
+                return new RangeSet(lowerBounds, upperBounds);
+            }
+
+            if (other is HashedSet hs)
+            {
+                var first = hs.Values[0];
+                var last = hs.Values[^1];
+
+
+                // If same interval
+                if (Length == hs.Length && Min == first && Max == last) return this;
+
+                // If no intersection
+                if (Min > last || Max < first)
+                    return new HashedSet(new long[] { }); // TODO: Implement empty set and return that instead
+
+
+                List<long> intersection = new List<long>();
+
+                // If HashedSet is smaller
+                if (hs.Length < Length)
+                {
+                    if (hs.Length >= Rules.MaxValueToLoop) throw new Exception("Set size too large");
+
+                    foreach (var x in hs.Values)
+                    {
+                        if (IsMember(x))
+                        {
+                            intersection.Add(x);
+                        }
+                    }
+                    return new HashedSet(intersection.ToArray());
+                }
+
+                // Else if RangeSet is smaller
+                if (Length >= Rules.MaxValueToLoop) throw new Exception("Set size too large");
+                var currentMinValue = Min;
+                var currentMaxValue = Max;
+
+                // These while loops finds upper bounds and lower bounds of hs
+                while (hs.IndexOf(currentMinValue) == -1)
+                {
+                    currentMinValue++;
+                }
+
+                while (hs.IndexOf(currentMaxValue) == -1)
+                {
+                    currentMaxValue--;
+                }
+
+                var minCommonMember = hs.IndexOf(currentMinValue);
+                var maxCommonMember = hs.IndexOf(currentMaxValue);
+
+                for (var i = minCommonMember; i < maxCommonMember; i++)
+                {
+                    intersection.Add(hs.Values[i]);
+                }
+
+                return new HashedSet(intersection.ToArray());
+            }
+            // If Union
             throw new NotImplementedException();
         }
 
-        public ISet<long> Difference(ISet<long> set)
+        public ISet<long> Difference(ISet<long> other)
         {
+            if (other is RangeSet rs)
+            {
+                // Compare the lower- and upper bounds of the two Range Sets
+                var otherMinBiggerThanMin = rs.Min > Min;
+                var otherMaxSmallerThanMax = rs.Max < Max;
+                // TODO: Implement empty set and return that instead
+                // If this is a pure subset of 'rs' / 'other'
+                if (CompareTo(rs) == -1) return new HashedSet(new long[] { });
+
+                if (otherMinBiggerThanMin)
+                {
+                    if (otherMaxSmallerThanMax)
+                    {
+                        // Other is subset of This. Return Union of the lower and upper ranges
+                        var rs1 = new RangeSet(Min, rs.Min);
+                        var rs2 = new RangeSet(rs.Max, Max);
+                        return rs1.Union(rs2);
+                    }
+                    // Cut off top of This range
+                    return new RangeSet(Min, rs.Min);
+                }
+                // Cut off bottom of This range
+                return new RangeSet(rs.Max, Max);
+            }
+            if (other is HashedSet hs)
+            {
+                throw new NotImplementedException();
+            }
+
+
             throw new NotImplementedException();
         }
 
         public ISet<long> Complement()
         {
-            throw new NotImplementedException();
+            // If the RangedSet contains all long values, there is no complement
+            if (Min == long.MinValue)
+            {
+                if (Max == long.MaxValue)
+                    return new HashedSet(new long[] { }); // TODO: Implement empty set and return that instead
+                // If the Min value is the smallest long value and the Max value is NOT the maximum long value
+                return new RangeSet(Max + 1, long.MaxValue);
+            }
+
+            if (Max == long.MaxValue)
+                return new RangeSet(long.MinValue, Max - 1);
+
+            var lower = new RangeSet(long.MinValue, Min - 1);
+            var upper = new RangeSet(Min + 1, long.MaxValue);
+            return lower.Union(upper);
         }
 
         public int CompareTo(ISet<long> other)
         {
             if (other is RangeSet rs)
             {
-                if (max == rs.max && min == rs.min) return 0;
-                if (min >= rs.min && max <= rs.max) return -1;
-                if (min <= rs.min && max >= rs.max) return 1;
+                if (Max == rs.Max && Min == rs.Min) return 0;
+                if (Min >= rs.Min && Max <= rs.Max) return -1;
+                if (Min <= rs.Min && Max >= rs.Max) return 1;
                 return -2;
-
             }
-
 
             if (other is HashedSet hs)
             {
                 var first = hs.Values[0];
                 var last = hs.Values[^1];
-                var isPureSubset = IsMember(first) && IsMember(last);
-                bool isPureSuperset;
-
 
                 // Equals
-                if (Length == hs.Length && min == first && max == last) return 0;
-
-
-                // TODO: Lav to loops, hvor vi kun kommer ind i loopet, alt efter, hvilken der er kortest (check på length)
+                if (Length == hs.Length && Min == first && Max == last) return 0;
 
                 if (Length < hs.Length)
                 {
+                    // Because we loop through the shortest set, we won't loop if the set contains too many numbers
                     if (Length >= Rules.MaxValueToLoop) return 2;
 
                     // Find the smallest common value in the Hashed Set
-                    var minCommonMember = hs.IndexOf(min);
+                    var minCommonMember = hs.IndexOf(Min);
 
                     // If smallest common value is not found
                     if (minCommonMember == -1)
@@ -92,12 +200,12 @@ namespace SetTheory
                     }
 
                     // The current value in the RangedSet which we are using in the loop below.
-                    var currentValue = min;
+                    var currentValue = Min;
 
                     // If we have a common value in the RangedSet and HashedSet
                     // We iterate through the HashedSet to try and figure out if the RangedSet
                     // Is a pure subset of the HashedSet
-                    for (var i = minCommonMember; i < max; i++, currentValue++)
+                    for (var i = minCommonMember; i <= Max; i++, currentValue++)
                     {
                         //Check for indexOutOfRange and if values is not member of HashedSet
                         if (i >= hs.Values.Length || hs.Values[i] != currentValue)
@@ -125,17 +233,14 @@ namespace SetTheory
 
             }
 
-            if (other is UnionSet us)
-            {
-                var res = us.CompareTo(this);
-                if (res == 2 || res == -2) return res;
-                // Because we use the "other" set's compareTo method,
-                // We have to reverse the result value.
-                return res * -1;
+            // It must be a UnionSet
 
-            }
+            var res = other.CompareTo(this);
+            if (res == 2 || res == -2) return res;
+            // Because we use the "other" set's compareTo method,
+            // We have to reverse the result value.
+            return res * -1;
 
-            throw new NotImplementedException();
         }
     }
 }
