@@ -7,12 +7,12 @@ namespace SetTheory
 {
     class HashedSet : ISet<long>
     {
-        public long[] Set { get; private set; }
-        public long Length => Set.Length;
+        public long[] Values { get; private set; }
+        public long Length => Values.Length;
         public HashedSet(long[] set)
         {
-            Set = set.Distinct().ToArray();
-            Array.Sort(Set);
+            Values = set.Distinct().ToArray();
+            Array.Sort(Values);
         }
 
         public int CompareTo(ISet<long> set)
@@ -43,6 +43,11 @@ namespace SetTheory
         public ISet<long> Union(ISet<long> other)
         {
             return new UnionSet(this, other);
+        }
+
+        public int IndexOf(long value)
+        {
+            return Array.IndexOf(Values, value);
         }
     }
 }

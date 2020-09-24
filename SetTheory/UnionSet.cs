@@ -1,4 +1,4 @@
-﻿using System;
+﻿ using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -19,8 +19,6 @@ namespace SetTheory
         {
             var a = first.CompareTo(set);
             var b = second.CompareTo(set);
-            // If a is not a subset of b, and b is not a subset of a.
-            if (a == -2 || b == -2) return -2;
 
             // If either of the results are indeterminable, the whole equation is indeterminable
             if (a == 2 || b == 2) return 2;
@@ -33,6 +31,9 @@ namespace SetTheory
             // Here a is a pure subset of c and c is equal to b, then a is a pure subset of b as well.
             // and c is equal to b.
             if (a == 0 || b == 0) return 0;
+
+            // If a is not a subset of b, and b is not a subset of a.
+            if (a == -2 || b == -2) return -2;
 
             // This can either return -1, 0 or 1, but is indeterminable which one it is (unless further logic is implementet)
             return 2;
