@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SetTheory
 {
-    interface ISet<T>
+    public interface ISet<T>
     {
         bool IsMember(T other);
         ISet<T> Union(ISet<T> other);

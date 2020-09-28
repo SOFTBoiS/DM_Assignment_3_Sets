@@ -1,19 +1,31 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace SetTheory
 {
-    class RangeSet : ISet<long>
+    public class RangeSet : ISet<long>
     {
         public readonly long Min;
         public readonly long Max;
-        public long Length => Max - Min + 1;
+        public long Length => CalculateLength();
+
+
+
+        private long CalculateLength()
+        {
+            var _min = new BigInteger(Min);
+            var _max = new BigInteger(Max);
+            var realLength = _max - _min + 1;
+            return realLength > long.MaxValue ? long.MaxValue : Max - Min + 1;
+
+        }
 
         public RangeSet(long min, long max)
         {
-            this.Min = min;
-            this.Max = max;
+            Min = min;
+            Max = max;
         }
 
         public bool IsMember(long member)
@@ -56,7 +68,6 @@ namespace SetTheory
             {
                 var first = hs.Values[0];
                 var last = hs.Values[^1];
-
 
                 // If same interval
                 if (Length == hs.Length && Min == first && Max == last) return this;
@@ -102,7 +113,7 @@ namespace SetTheory
                 var minCommonMember = hs.IndexOf(currentMinValue);
                 var maxCommonMember = hs.IndexOf(currentMaxValue);
 
-                for (var i = minCommonMember; i < maxCommonMember; i++)
+                for (var i = minCommonMember; i <= maxCommonMember; i++)
                 {
                     intersection.Add(hs.Values[i]);
                 }
@@ -131,15 +142,15 @@ namespace SetTheory
                     if (otherMaxSmallerThanMax)
                     {
                         // Other is subset of This. Return Union of the lower and upper ranges
-                        var rs1 = new RangeSet(Min, rs.Min);
-                        var rs2 = new RangeSet(rs.Max, Max);
+                        var rs1 = new RangeSet(Min, rs.Min-1);
+                        var rs2 = new RangeSet(rs.Max+1, Max);
                         return rs1.Union(rs2);
                     }
                     // Cut off top of This range
-                    return new RangeSet(Min, rs.Min);
+                    return new RangeSet(Min, rs.Min-1);
                 }
                 // Cut off bottom of This range
-                return new RangeSet(rs.Max, Max);
+                return new RangeSet(rs.Max+1, Max);
             }
             if (other is HashedSet hs)
             {
@@ -166,12 +177,12 @@ namespace SetTheory
                 }
                 var lowerValues = new RangeSet(long.MinValue, commonMin - 1);
                 var upperValues = new RangeSet(commonMin + 1, long.MaxValue);
-                var middleValuesTmp = new List();
+                var middleValuesTmp = new List<long>();
                 var middleValues = new HashedSet(new long[] { });
                 if (commonMin == commonMax)
                 {
                     middleValues = new HashedSet(new long[] { });
-                } 
+                }
                 else
                 {
                     commonMinIndex++;
@@ -186,13 +197,13 @@ namespace SetTheory
                             middleValuesTmp.Add(i);
                         }
                     }
-                    var middleValues = new HashedSet(new long[] { });
+                    middleValues = new HashedSet(middleValuesTmp.ToArray());
                 }
                 
-                return new ComplementOrDifferenceSet(lowerValues, middleValues, upperValues));
+                return new ComplementOrDifferenceSet(lowerValues, middleValues, upperValues);
             }
 
-
+            // if (other is UnionSet us)
             throw new NotImplementedException();
         }
 
@@ -290,5 +301,16 @@ namespace SetTheory
             return res * -1;
 
         }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is RangeSet rs)
+            {
+                return Min == rs.Min && Max == rs.Max;
+            }
+            return base.Equals(obj);
+        }
+
+ 
     }
 }

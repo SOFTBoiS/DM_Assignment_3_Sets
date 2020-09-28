@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SetTheory
 {
-    static class Rules
+    public static class Rules
     {
         /// <summary>
         /// The maximum amount of loops to iterate through
