@@ -109,7 +109,9 @@ namespace SetTheory
 
                 return new HashedSet(intersection.ToArray());
             }
+
             // If Union
+
             throw new NotImplementedException();
         }
 
@@ -141,7 +143,53 @@ namespace SetTheory
             }
             if (other is HashedSet hs)
             {
-                throw new NotImplementedException();
+                long commonMinIndex = 0;
+                long commonMaxIndex = hs.Length-1;
+                long commonMin = hs.Values[commonMinIndex];
+                long commonMax = hs.Values[commonMaxIndex];
+                
+                while (!IsMember(commonMin))
+                {
+                    if (commonMinIndex == hs.Length)
+                    {
+                        return this;
+                    }
+                    commonMin = hs.Values[++commonMinIndex];
+                }
+                while (!IsMember(commonMax))
+                {
+                    if (commonMaxIndex == commonMinIndex)
+                    {
+                        break;
+                    }
+                    commonMax = hs.Values[--commonMinIndex];
+                }
+                var lowerValues = new RangeSet(long.MinValue, commonMin - 1);
+                var upperValues = new RangeSet(commonMin + 1, long.MaxValue);
+                var middleValuesTmp = new List();
+                var middleValues = new HashedSet(new long[] { });
+                if (commonMin == commonMax)
+                {
+                    middleValues = new HashedSet(new long[] { });
+                } 
+                else
+                {
+                    commonMinIndex++;
+                    for (long i = commonMin + 1; i < commonMax; i++)
+                    {
+                        if (i == hs.Values[commonMinIndex])
+                        {
+                            commonMinIndex++;
+                        }
+                        else
+                        {
+                            middleValuesTmp.Add(i);
+                        }
+                    }
+                    var middleValues = new HashedSet(new long[] { });
+                }
+                
+                return new ComplementOrDifferenceSet(lowerValues, middleValues, upperValues));
             }
 
 

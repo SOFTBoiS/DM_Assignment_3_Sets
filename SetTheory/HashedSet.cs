@@ -111,22 +111,175 @@ namespace SetTheory
 
         public ISet<long> Complement()
         {
+            var first = Values[0];
+            var last = Values[^1];
+
+            if (Length > Rules.MaxValueToLoop)
+                throw new Exception("Set size too large to calculate");
+
+
+            //Separates the complementset into 2 rangesets for upper and Lower parts + middle hashedSet
+            var lowerRange = new RangeSet(long.MinValue, first);
+            var upperRange = new RangeSet(last, long.MaxValue);
+            HashedSet middleRange;
+
+            var nextValueIdx = 0;
+            var complements = new List<long>();
+
+            // This adds only values not in the original HashedSet
+            for (long i = first; i < last; i++)
+            {
+                var nextValue = Values[nextValueIdx];
+                if (i == nextValue)
+                    nextValue = Values[nextValueIdx++];
+                if (i != nextValue)
+                    complements.Add(i);
+            }
+
+            middleRange = new HashedSet(complements.ToArray);
+
+            return new ComplementOrDifferenceSet(lowerRange, middleRange, upperRange);
+        }
+
+        public ISet<long> Difference(ISet<long> other)
+        {
+            if (other is HashedSet hs)
+            {
+                if (Length >= Rules.MaxValueToLoop || hs.Length >= Rules.MaxValueToLoop)
+                    throw new Exception("Set size too large to calculate");
+
+                var difference = new List<long>();
+                var iterations = Length < hs.Length ? Length : hs.Length;
+
+                // Iterate through the shortest Set and check for values that are not in the 'hs' HashedSet
+                for (var i = 0; i < iterations; i++)
+                {
+                    if (!hs.IsMember(Values[i]))
+                    {
+                        difference.Add(Values[i]);
+                    }
+                }
+
+                // If this HashedSet is longer than the other, we need to add the remaining values after the loop has finished
+                if (Length > hs.Length)
+                {
+                    // Get the rest of the set values from the set and combine them with the set values anot found in the other set
+                    var remaining = Values[lengthInInt..^1];
+
+                    // Convert the list of difference values to array so we can merge
+                    var setArrayValues = difference.ToArray();
+
+                    // Resize the array to fit the remaining values
+                    var newLength = setArrayValues.Length + remaining.Length;
+                    Array.Resize(ref setArrayValues, newLength);
+
+                    // Copy the elements of the remaining values into the setArrayValues array
+                    Array.Copy(remaining, setArrayValues, newLength);
+                    return new HashedSet(setArrayValues);
+                }
+
+                return new HashedSet(difference.ToArray());
+            }
+
+            if (other is RangeSet rs)
+            {
+
+            }
             throw new NotImplementedException();
         }
 
-        public ISet<long> Difference(ISet<long> set)
+        public ISet<long> Intersection(ISet<long> other)
         {
+            if (other is HashedSet hs)
+            {
+                var intersectionSet = new List<long>();
+                if (Length < hs.Length)
+                {
+                    for (var i = 0; i < Length; i++)
+                    {
+                        if (hs.IsMember(Values[i]))
+                        {
+                            intersectionSet.Add(Values[i]);
+                        }
+                    }
+                }
+                else // if the other set is shorter
+                {
+                    for (var i = 0; i < hs.Length; i++)
+                    {
+                        if (IsMember(hs.Values[i]))
+                        {
+                            intersectionSet.Add(Values[i]);
+                        }
+                    }
+                }
+
+                return new HashedSet(intersectionSet.ToArray());
+            }
+
+            if (other is RangedSet rs)
+            {
+                var first = Values[0];
+                var last = Values[^1];
+
+
+                // If same interval
+                if (Length == rs.Length && Min == first && Max == last) return rs;
+
+                // If no intersection
+                if (Min > last || Max < first)
+                    return new HashedSet(new long[] { }); // TODO: Implement empty set and return that instead
+
+
+                List<long> intersection = new List<long>();
+
+                // If HashedSet is smaller
+                if (Length < rs.Length)
+                {
+                    if (rs.Length >= Rules.MaxValueToLoop) throw new Exception("Set size too large");
+
+                    foreach (var x in Values)
+                    {
+                        if (rs.IsMember(x))
+                        {
+                            intersection.Add(x);
+                        }
+                    }
+                    return new HashedSet(intersection.ToArray());
+                }
+
+                // Else if RangeSet is smaller
+                if (rs.Length >= Rules.MaxValueToLoop) throw new Exception("Set size too large");
+                var currentMinValue = Min;
+                var currentMaxValue = Max;
+
+                // These while loops finds upper bounds and lower bounds of hs
+                while (IndexOf(currentMinValue) == -1)
+                {
+                    currentMinValue++;
+                }
+
+                while (IndexOf(currentMaxValue) == -1)
+                {
+                    currentMaxValue--;
+                }
+
+                var minCommonMember = IndexOf(currentMinValue);
+                var maxCommonMember = IndexOf(currentMaxValue);
+
+                for (var i = minCommonMember; i < maxCommonMember; i++)
+                {
+                    intersection.Add(Values[i]);
+                }
+
+                return new HashedSet(intersection.ToArray());
+            }
             throw new NotImplementedException();
         }
 
-        public ISet<long> Intersection(ISet<long> set)
+        public bool IsMember(long value)
         {
-            throw new NotImplementedException();
-        }
-
-        public bool IsMember(long set)
-        {
-            throw new NotImplementedException();
+            return IndexOf(value) != -1;
         }
 
         public ISet<long> Union(ISet<long> other)
